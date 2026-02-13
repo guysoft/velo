@@ -11,12 +11,14 @@ export function SetupClientId({ onComplete, onCancel }: SetupClientIdProps) {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     const trimmedId = clientId.trim();
     if (!trimmedId) return;
 
     setSaving(true);
+    setError(null);
     try {
       await setSetting("google_client_id", trimmedId);
       const trimmedSecret = clientSecret.trim();
@@ -24,7 +26,10 @@ export function SetupClientId({ onComplete, onCancel }: SetupClientIdProps) {
         await setSecureSetting("google_client_secret", trimmedSecret);
       }
       onComplete();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save API settings:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to save settings: ${message}`);
       setSaving(false);
     }
   };
@@ -52,6 +57,12 @@ export function SetupClientId({ onComplete, onCancel }: SetupClientIdProps) {
           </li>
           <li>Copy the Client ID and Client Secret below</li>
         </ol>
+
+        {error && (
+          <div className="bg-danger/10 border border-danger/20 rounded-lg p-3 mb-4 text-sm text-danger">
+            {error}
+          </div>
+        )}
 
         <input
           type="text"
