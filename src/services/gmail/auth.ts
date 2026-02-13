@@ -70,6 +70,7 @@ function base64UrlEncode(bytes: Uint8Array): string {
 export async function startOAuthFlow(
   clientId: string,
   clientSecret?: string,
+  onAuthUrl?: (url: string) => void,
 ): Promise<{ tokens: TokenResponse; userInfo: UserInfo }> {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -101,9 +102,18 @@ export async function startOAuthFlow(
     state: oauthState,
   });
 
+  // Expose the auth URL to the caller (for fallback display in UI)
+  onAuthUrl?.(authUrl);
+
   // Small delay to let the server bind before opening the browser
   await new Promise((r) => setTimeout(r, 100));
-  await openUrl(authUrl);
+  try {
+    await openUrl(authUrl);
+  } catch (err) {
+    // openUrl can silently fail on Linux (e.g. AppImage, xdg-open issues).
+    // The flow continues — the user can manually visit the URL shown in the UI.
+    console.warn("Failed to open browser for OAuth:", err);
+  }
 
   // Wait for the redirect
   const result = await serverPromise;
