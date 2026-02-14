@@ -5,7 +5,7 @@
  */
 
 import { exists, readTextFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 
 const KEY_FILE_NAME = "velo.key";
 const ALGORITHM = "AES-GCM";
@@ -33,7 +33,7 @@ function base64Decode(str: string): Uint8Array {
 
 async function getKeyFilePath(): Promise<string> {
   const dir = await appDataDir();
-  return `${dir}${KEY_FILE_NAME}`;
+  return await join(dir, KEY_FILE_NAME);
 }
 
 async function ensureAppDataDir(): Promise<void> {
@@ -56,16 +56,24 @@ async function getOrCreateKey(): Promise<CryptoKey> {
   const keyPath = await getKeyFilePath();
 
   let rawKeyB64: string;
-  if (await exists(keyPath)) {
-    rawKeyB64 = (await readTextFile(keyPath)).trim();
-  } else {
-    // Generate a new random key
-    const rawKey = new Uint8Array(KEY_LENGTH / 8);
-    crypto.getRandomValues(rawKey);
-    rawKeyB64 = base64Encode(rawKey);
+  try {
+    if (await exists(keyPath)) {
+      rawKeyB64 = (await readTextFile(keyPath)).trim();
+    } else {
+      // Generate a new random key
+      const rawKey = new Uint8Array(KEY_LENGTH / 8);
+      crypto.getRandomValues(rawKey);
+      rawKeyB64 = base64Encode(rawKey);
 
-    await ensureAppDataDir();
-    await writeTextFile(keyPath, rawKeyB64);
+      await ensureAppDataDir();
+      await writeTextFile(keyPath, rawKeyB64);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Unable to access encryption key at "${keyPath}". ` +
+      `Please ensure the app data directory is writable. (${msg})`,
+    );
   }
 
   const rawKey = base64Decode(rawKeyB64);

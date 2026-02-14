@@ -98,6 +98,7 @@ export function SettingsPage() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [apiSettingsSaved, setApiSettingsSaved] = useState(false);
+  const [apiSettingsError, setApiSettingsError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncPeriodDays, setSyncPeriodDays] = useState("365");
   const [blockRemoteImages, setBlockRemoteImages] = useState(true);
@@ -218,16 +219,23 @@ export function SettingsPage() {
   }, []);
 
   const handleSaveApiSettings = useCallback(async () => {
-    const trimmedId = clientId.trim();
-    if (trimmedId) {
-      await setSetting("google_client_id", trimmedId);
+    setApiSettingsError(null);
+    try {
+      const trimmedId = clientId.trim();
+      if (trimmedId) {
+        await setSetting("google_client_id", trimmedId);
+      }
+      const trimmedSecret = clientSecret.trim();
+      if (trimmedSecret) {
+        await setSecureSetting("google_client_secret", trimmedSecret);
+      }
+      setApiSettingsSaved(true);
+      setTimeout(() => setApiSettingsSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save API settings:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      setApiSettingsError(`Failed to save: ${message}`);
     }
-    const trimmedSecret = clientSecret.trim();
-    if (trimmedSecret) {
-      await setSecureSetting("google_client_secret", trimmedSecret);
-    }
-    setApiSettingsSaved(true);
-    setTimeout(() => setApiSettingsSaved(false), 2000);
   }, [clientId, clientSecret]);
 
   const handleManualSync = useCallback(async () => {
@@ -834,6 +842,9 @@ export function SettingsPage() {
                         {apiSettingsSaved ? "Saved!" : "Save"}
                       </Button>
                     </div>
+                    {apiSettingsError && (
+                      <p className="text-danger text-sm mt-2">{apiSettingsError}</p>
+                    )}
                   </Section>
                 </>
               )}
