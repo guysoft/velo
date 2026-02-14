@@ -12,7 +12,8 @@ vi.mock("@tauri-apps/plugin-fs", () => {
 });
 
 vi.mock("@tauri-apps/api/path", () => ({
-  appDataDir: vi.fn(async () => "/mock/app/data/"),
+  appDataDir: vi.fn(async () => "/mock/app/data"),
+  join: vi.fn(async (...parts: string[]) => parts.join("/")),
 }));
 
 describe("crypto", () => {
